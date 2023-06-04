@@ -25,9 +25,9 @@ from drf_yasg import openapi
 
 schema_view = get_schema_view(
     openapi.Info(
-        title="PharmaShop API",
+        title="Impact.t",
         default_version='api',
-        description="PharmaShop site documentations",
+        description="Impact.t site documentations",
         terms_of_service="https://www.google.com/policies/terms/",
         contact=openapi.Contact(email="ibragimovxusanofficial@gmail.com"),
         license=openapi.License(name="BSD License"),
