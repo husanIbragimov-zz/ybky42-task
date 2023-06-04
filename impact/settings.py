@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     # libs
     'rest_framework',
     'corsheaders',
+    'drf_yasg',
 
     # local app
     'room',
