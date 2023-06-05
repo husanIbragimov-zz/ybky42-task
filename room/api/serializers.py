@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from room.models import FreeTime, Room, Book
+from room.models import Book, Room, User
 
 
 class RoomSerializer(serializers.ModelSerializer):
@@ -8,23 +8,23 @@ class RoomSerializer(serializers.ModelSerializer):
         fields = ('id', 'name', 'type', 'capacity')
 
 
-class FreeTimeSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = FreeTime
-        fields = ('start', 'end')
-
-
 class BookSerializer(serializers.ModelSerializer):
     class Meta:
         model = Book
+        fields = ('start', 'end')
+
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
         fields = ('name',)
 
 
-class FreeTimeBookSerializer(serializers.ModelSerializer):
-    resident = BookSerializer(write_only=True)
+class RoomBookingSerializer(serializers.ModelSerializer):
+    resident = UserSerializer(write_only=True)
 
     class Meta:
-        model = FreeTime
+        model = Book
         fields = ('resident', 'start', 'end')
 
     def create(self, validated_data):

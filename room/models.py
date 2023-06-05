@@ -1,5 +1,4 @@
 from datetime import datetime
-
 from django.db import models
 
 TYPE = (
@@ -21,7 +20,7 @@ class Room(models.Model):
         return self.name
 
 
-class Book(models.Model):
+class User(models.Model):
     name = models.CharField(max_length=223, null=True)
     date_created = models.DateTimeField(auto_now_add=True)
 
@@ -29,12 +28,12 @@ class Book(models.Model):
         return self.name
 
 
-class FreeTime(models.Model):
-    resident = models.ForeignKey(Book, on_delete=models.SET_NULL, null=True)
+class Book(models.Model):
+    resident = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     room = models.ForeignKey(Room, on_delete=models.SET_NULL, null=True, related_name='times')
-    start = models.DateTimeField(default=datetime.now(), null=True, blank=True)
-    end = models.DateTimeField(default=datetime.now(), null=True, blank=True)
+    start = models.CharField(max_length=223, null=True, blank=True)
+    end = models.CharField(max_length=223, null=True, blank=True)
     is_active = models.BooleanField(default=True)
 
     def __str__(self):
-        return f'The {self.room} room was booked'
+        return f'The {self.room} room was booked {self.start} - {self.end}'
