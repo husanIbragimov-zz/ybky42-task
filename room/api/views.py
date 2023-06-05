@@ -1,10 +1,12 @@
 from datetime import datetime
 from django.shortcuts import get_object_or_404
-from rest_framework import generics, status
+from rest_framework import generics, status, filters
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.decorators import api_view
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from room.models import Room, User, Book
+from .filters import RoomFilter
 from .serializers import RoomSerializer, RoomBookingSerializer, BookSerializer
 
 
@@ -18,6 +20,8 @@ class RoomListView(generics.ListAPIView):
     queryset = Room.objects.all()
     serializer_class = RoomSerializer
     pagination_class = LargeResultsSetPagination
+    filterset_class = RoomFilter
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
 
 
 @api_view(['GET'])
@@ -27,7 +31,7 @@ def room_detail(request, pk):
         serializer = RoomSerializer(room, many=False)
         return Response(serializer.data, status=status.HTTP_200_OK)
     except Exception as e:
-        return Response({"error": f"{e}"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": "topilmadi"}, status=status.HTTP_404_NOT_FOUND)
 
 
 @api_view(['GET'])
