@@ -1,10 +1,11 @@
+from datetime import datetime
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, status
 from rest_framework.decorators import api_view
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
-from room.models import Room, FreeTime, Book
-from .serializers import RoomSerializer, FreeTimeSerializer, FreeTimeBookSerializer, BookSerializer
+from room.models import Room, User, Book
+from .serializers import RoomSerializer, RoomBookingSerializer, BookSerializer
 
 
 class LargeResultsSetPagination(PageNumberPagination):
@@ -26,40 +27,47 @@ def room_detail(request, pk):
         serializer = RoomSerializer(room, many=False)
         return Response(serializer.data, status=status.HTTP_200_OK)
     except Exception as e:
-        return Response({"error": "topilmadi"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": f"{e}"}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['GET'])
 def availability(request, pk):
     try:
-        times = FreeTime.objects.filter(room_id=pk)
-        serializer = FreeTimeSerializer(times, many=True)
+        times = Book.objects.filter(room_id=pk)
+        serializer = BookSerializer(times, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
     except Exception as e:
         return Response({"error": f"{e}"}, status=status.HTTP_400_BAD_REQUEST)
 
 
-# class BookAPIView(generics.CreateAPIView):
-#     queryset = FreeTime.objects.all()
-#     serializer_class = FreeTimeBookSerializer
+class RoomBookingAPIView(generics.CreateAPIView):
+    queryset = Book.objects.all()
+    serializer_class = RoomBookingSerializer
 
-@api_view(["POST"])
-def book_create(request, pk):
-    try:
-        sz = FreeTimeBookSerializer(data=request.data)
+    def create(self, request, *args, **kwargs):
+        room_id = self.kwargs['pk']
         name = request.data.get('resident')['name']
-        resident = Book.objects.create(name=name)
-        FreeTime.objects.create(room_id=pk, resident=resident)
-        if sz.is_valid(raise_exception=True):
-            sz.save()
+        start = request.data.get('start')
+        end = request.data.get('end')
+        c = datetime.strptime(start, '%Y-%m-%d %H:%M:%S')
+        d = datetime.strptime(end, '%Y-%m-%d %H:%M:%S')
+        print(self.get_queryset().filter(room_id=room_id).count())
+
+        if self.get_queryset().filter(room_id=room_id).count() > 0:
+
+            for query in self.get_queryset().filter(room_id=room_id):
+
+                db_start = query.start
+                db_end = query.end
+                a = datetime.strptime(db_start, '%Y-%m-%d %H:%M:%S')
+                b = datetime.strptime(db_end, '%Y-%m-%d %H:%M:%S')
+
+                if (c < a and d <= a) or (b <= c and b < d):
+                    resident = User.objects.create(name=name)
+                    Book.objects.create(room_id=room_id, resident=resident, start=start, end=end)
+                    return Response({"message": "xona muvaffaqiyatli band qilindi"}, status=status.HTTP_201_CREATED)
+        else:
+            resident = User.objects.create(name=name)
+            Book.objects.create(room_id=room_id, resident=resident, start=start, end=end)
             return Response({"message": "xona muvaffaqiyatli band qilindi"}, status=status.HTTP_201_CREATED)
-    except Exception as e:
-        return Response({"error": f"{e}"})
-
-
-    # resident = request.data.get('resident')['name']
-    # book = Book.objects.create(name=resident)
-    # start = request.data.get('start')
-    # end = request.data.get('end')
-    # qs = FreeTime.objects.create(room_id=pk, resident=book, start=start, end=end)
-    # return Response({"message": "xona muvaffaqiyatli band qilindi"}, status=status.HTTP_201_CREATED)
+        return Response({"error": "uzr, siz tanlagan vaqtda xona band"}, status=status.HTTP_410_GONE)
