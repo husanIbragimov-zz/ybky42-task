@@ -1,10 +1,10 @@
 import django_filters
-from room.models import Room, Book
+from room.models import Room, Book, TYPE
 
 
 class RoomFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(field_name='name', lookup_expr='exact')
-    type = django_filters.CharFilter(field_name='type', lookup_expr='exact')
+    type = django_filters.ChoiceFilter(choices=TYPE)
     capacity = django_filters.NumberFilter(field_name='capacity')
     is_active = django_filters.BooleanFilter(field_name='is_active')
 
