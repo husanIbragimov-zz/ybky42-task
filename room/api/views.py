@@ -77,7 +77,7 @@ class RoomBookingAPIView(generics.CreateAPIView):
                 a = datetime.strptime(db_start, '%Y-%m-%d %H:%M:%S')
                 b = datetime.strptime(db_end, '%Y-%m-%d %H:%M:%S')
 
-                if (c < a and d <= a) or (b <= c and b < d):
+                if ((c < a and d <= a) or (b <= c and b < d)) and (a != c) and (b != d):
                     resident = User.objects.create(name=name)
                     Book.objects.create(room_id=room_id, resident=resident, start=start, end=end)
                     return Response({"message": "xona muvaffaqiyatli band qilindi"}, status=status.HTTP_201_CREATED)
