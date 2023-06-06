@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import django_filters
 from room.models import Room, Book, TYPE
 
@@ -11,6 +13,17 @@ class RoomFilter(django_filters.FilterSet):
     class Meta:
         model = Room
         fields = []
+
+
+def filter_date(queryset, name, value):
+    # print(name)
+    # a = datetime.strptime(value, '%Y-%m-%d')
+    queryset = queryset.filter(start__exact=value)
+    return queryset
+
+
+class RoomAvailabilityFilter(django_filters.FilterSet):
+    start = django_filters.DateFilter(method=filter_date, label='date')
 
 
 class RoomBookingFilter(django_filters.FilterSet):

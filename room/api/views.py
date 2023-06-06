@@ -6,8 +6,8 @@ from rest_framework.decorators import api_view
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from room.models import Room, User, Book
-from .filters import RoomFilter
-from .serializers import RoomSerializer, RoomBookingSerializer, BookSerializer
+from .filters import RoomFilter, RoomAvailabilityFilter
+from .serializers import RoomSerializer, RoomBookingSerializer, RoomAvailabilitySerializer
 
 
 class LargeResultsSetPagination(PageNumberPagination):
@@ -38,10 +38,21 @@ def room_detail(request, pk):
 def availability(request, pk):
     try:
         times = Book.objects.filter(room_id=pk)
-        serializer = BookSerializer(times, many=True)
+        serializer = RoomAvailabilitySerializer(times, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
     except Exception as e:
         return Response({"error": f"{e}"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class RoomAvailabilityRetrieveView(generics.ListAPIView):
+    serializer_class = RoomAvailabilitySerializer
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    filterset_class = RoomAvailabilityFilter
+
+    def get_queryset(self):
+        room_id = self.kwargs['pk']
+        queryset = Book.objects.filter(room_id=room_id)
+        return queryset
 
 
 class RoomBookingAPIView(generics.CreateAPIView):
