@@ -26,7 +26,3 @@ class RoomBookingSerializer(serializers.ModelSerializer):
     class Meta:
         model = Book
         fields = ('resident', 'start', 'end')
-
-    def create(self, validated_data):
-
-        return "OK"

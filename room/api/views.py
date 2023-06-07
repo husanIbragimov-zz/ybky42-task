@@ -51,7 +51,7 @@ class RoomAvailabilityRetrieveView(generics.ListAPIView):
 
     def get_queryset(self):
         room_id = self.kwargs['pk']
-        queryset = Book.objects.filter(room_id=room_id)
+        queryset = Book.objects.filter(room_id=room_id, start__day=datetime.now().day)
         return queryset
 
 
@@ -64,25 +64,26 @@ class RoomBookingAPIView(generics.CreateAPIView):
         name = request.data.get('resident')['name']
         start = request.data.get('start')
         end = request.data.get('end')
-        c = datetime.strptime(start, '%Y-%m-%d %H:%M:%S')
-        d = datetime.strptime(end, '%Y-%m-%d %H:%M:%S')
-        print(self.get_queryset().filter(room_id=room_id).count())
-
+        c = start
+        d = end
         if self.get_queryset().filter(room_id=room_id).count() > 0:
-
+            result = True
             for query in self.get_queryset().filter(room_id=room_id):
+                if result:
+                    a = query.start.strftime("%Y-%m-%d %H:%M:%S")
+                    b = query.end.strftime("%Y-%m-%d %H:%M:%S")
+                    if (c < a and d <= a) or (b <= c and b < d):
+                        result = True
+                    else:
+                        result = False
+            if result:
+                resident = User.objects.create(name=name)
+                Book.objects.create(room_id=room_id, resident=resident, start=start, end=end)
+                return Response({"message": "xona muvaffaqiyatli band qilindi"}, status=status.HTTP_201_CREATED)
 
-                db_start = query.start
-                db_end = query.end
-                a = datetime.strptime(db_start, '%Y-%m-%d %H:%M:%S')
-                b = datetime.strptime(db_end, '%Y-%m-%d %H:%M:%S')
-
-                if ((c < a and d <= a) or (b <= c and b < d)) and (a != c) and (b != d):
-                    resident = User.objects.create(name=name)
-                    Book.objects.create(room_id=room_id, resident=resident, start=start, end=end)
-                    return Response({"message": "xona muvaffaqiyatli band qilindi"}, status=status.HTTP_201_CREATED)
         else:
             resident = User.objects.create(name=name)
             Book.objects.create(room_id=room_id, resident=resident, start=start, end=end)
             return Response({"message": "xona muvaffaqiyatli band qilindi"}, status=status.HTTP_201_CREATED)
-        return Response({"error": "uzr, siz tanlagan vaqtda xona band"}, status=status.HTTP_410_GONE)
+        return Response({"error": f"uzr, siz tanlagan vaqtda xona band"},
+                        status=status.HTTP_410_GONE)

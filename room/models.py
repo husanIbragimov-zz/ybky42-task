@@ -31,9 +31,10 @@ class User(models.Model):
 class Book(models.Model):
     resident = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     room = models.ForeignKey(Room, on_delete=models.SET_NULL, null=True, related_name='times')
-    start = models.CharField(max_length=223, null=True, blank=True)
-    end = models.CharField(max_length=223, null=True, blank=True)
+    start = models.DateTimeField(null=True, blank=True)
+    end = models.DateTimeField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
+    date_created = models.DateTimeField(auto_now_add=True, null=True)
 
     def __str__(self):
         return f'The {self.room} room was booked {self.start} - {self.end}'
