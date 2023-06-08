@@ -22,7 +22,7 @@ class Room(models.Model):
 
 class User(models.Model):
     name = models.CharField(max_length=223, null=True)
-    date_created = models.DateTimeField(auto_now_add=True)
+    date_created = models.DateTimeField(auto_now_add=True, null=True)
 
     def __str__(self):
         return self.name
@@ -37,4 +37,4 @@ class Book(models.Model):
     date_created = models.DateTimeField(auto_now_add=True, null=True)
 
     def __str__(self):
-        return f'The {self.room} room was booked {self.start} - {self.end}'
+        return f'The {self.room} room was booked {self.start.strftime("%Y-%m-%d %H:%M:%S")} - {self.end.strftime("%Y-%m-%d %H:%M:%S")}'
