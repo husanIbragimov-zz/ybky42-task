@@ -48,12 +48,12 @@ class RoomAvailabilityRetrieveView(generics.ListAPIView):
             Q(room_id=room_id),
             Q(Q(start__day=curr_time.day) | Q(end__day=curr_time.day))
         ).order_by('start')
-
+        room = Room.objects.get(id=room_id)
+        print(room)
         booked_list = []
         for booked in queryset:
-            start = curr_time.replace(hour=00, minute=00, second=00)
-            end = curr_time.replace(hour=23, minute=59, second=59)
-            print(booked.start.date())
+            start = room.active_date
+            end = room.inactive_date
             if booked.start.date() == curr_time.date():
                 start = booked.start
 
@@ -62,18 +62,20 @@ class RoomAvailabilityRetrieveView(generics.ListAPIView):
             booked_list.append((start, end))
 
         availability_list = []
-        previous_end = curr_time.replace(hour=00, minute=00, second=00)
+        previous_end = room.active_date
         for start, end in booked_list:
-            if previous_end < start:
+            print(type(previous_end))
+            print(type(start))
+            if previous_end < start.time():
                 availability_list.append({
-                    "start": str(previous_end),
-                    "end": str(start)
+                    "start": f"{curr_time.date()} {previous_end}",
+                    "end": f"{curr_time.date()} {start.time()}"
                 })
-            previous_end = end
-        if previous_end < curr_time.replace(hour=23, minute=59, second=59):
+            previous_end = end.time()
+        if previous_end < room.inactive_date:
             availability_list.append({
-                "start": str(previous_end),
-                "end": str(curr_time.replace(hour=23, minute=59, second=59))
+                "start": f"{curr_time.date()} {previous_end}",
+                "end": f"{curr_time.date()} {room.inactive_date}"
             })
 
         return availability_list
@@ -88,7 +90,6 @@ class RoomBookingAPIView(generics.CreateAPIView):
         name = request.data.get('resident')['name']
         start = request.data.get('start')
         end = request.data.get('end')
-        print(start)
         c = start
         d = end
         if self.get_queryset().filter(room_id=room_id).count() > 0:

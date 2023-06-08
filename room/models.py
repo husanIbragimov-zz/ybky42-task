@@ -14,6 +14,8 @@ class Room(models.Model):
     type = models.CharField(choices=TYPE, max_length=223, default='none')
     capacity = models.IntegerField(default=0)
     is_active = models.BooleanField(default=True)
+    active_date = models.TimeField(null=True, blank=True)
+    inactive_date = models.TimeField(null=True, blank=True)
     date_created = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
