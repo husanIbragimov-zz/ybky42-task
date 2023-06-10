@@ -7,5 +7,9 @@ class RoomAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'type')
 
 
+class BookAdmin(admin.ModelAdmin):
+    date_hierarchy = 'start'
+
+
 admin.site.register(User)
-admin.site.register(Book)
+admin.site.register(Book, BookAdmin)
