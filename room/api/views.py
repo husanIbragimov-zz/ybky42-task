@@ -42,36 +42,44 @@ class RoomAvailabilityRetrieveView(generics.ListAPIView):
     def get_queryset(self):
         room_id = self.kwargs['pk']
         curr_time = self.request.GET.get('date', datetime.now(timezone.utc))
+
         if isinstance(curr_time, str):
-            curr_time = datetime.strptime(curr_time, '%Y-%m-%d').replace(tzinfo=timezone.utc)
+            curr_time = datetime.strptime(curr_time, '%Y-%m-%d')
+
         queryset = Book.objects.filter(
             Q(room_id=room_id),
             Q(Q(start__day=curr_time.day) | Q(end__day=curr_time.day))
         ).order_by('start')
+
         room = Room.objects.get(id=room_id)
-        print(room)
         booked_list = []
+
         for booked in queryset:
+
             start = room.active_date
             end = room.inactive_date
+
             if booked.start.date() == curr_time.date():
                 start = booked.start
 
             if booked.start.date() == curr_time.date():
                 end = booked.end
+
             booked_list.append((start, end))
 
         availability_list = []
         previous_end = room.active_date
+
         for start, end in booked_list:
-            print(type(previous_end))
-            print(type(start))
+
             if previous_end < start.time():
                 availability_list.append({
                     "start": f"{curr_time.date()} {previous_end}",
                     "end": f"{curr_time.date()} {start.time()}"
                 })
+
             previous_end = end.time()
+
         if previous_end < room.inactive_date:
             availability_list.append({
                 "start": f"{curr_time.date()} {previous_end}",
@@ -86,30 +94,45 @@ class RoomBookingAPIView(generics.CreateAPIView):
     serializer_class = RoomBookingSerializer
 
     def create(self, request, *args, **kwargs):
-        room_id = self.kwargs['pk']
-        name = request.data.get('resident')['name']
-        start = request.data.get('start')
-        end = request.data.get('end')
-        c = start
-        d = end
-        if self.get_queryset().filter(room_id=room_id).count() > 0:
-            result = True
-            for query in self.get_queryset().filter(room_id=room_id):
+        try:
+            room_id = self.kwargs['pk']
+            name = request.data.get('resident')['name']  # user's name
+            start = request.data.get('start')  # time comes in str format
+            end = request.data.get('end')  # time comes in str format
+            c = datetime.strptime(start, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=timezone.utc)
+            # -> 2023-06-10 12:00:00+00:00  str is formatted to time
+            d = datetime.strptime(end, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=timezone.utc)
+
+            obj_room = Room.objects.get(id=room_id)
+            db_act = obj_room.active_date
+            db_inact = obj_room.inactive_date
+
+            if self.get_queryset().filter(room_id=room_id).count() > 0:  # more than once
+                result = True
+                for query in self.get_queryset().filter(room_id=room_id):
+                    if result:
+                        a = query.start  # -> 2023-06-10 12:00:00+00:00
+                        b = query.end  # .strftime("%Y-%m-%d %H:%M")
+
+                        if (c < a and d <= a) or (b <= c and b < d):
+                            result = True
+                        else:
+                            result = False
+                            conflict_time2 = b - c
+
                 if result:
-                    a = query.start.strftime("%Y-%m-%d %H:%M:%S")
-                    b = query.end.strftime("%Y-%m-%d %H:%M:%S")
-                    if (c < a and d <= a) or (b <= c and b < d):
-                        result = True
-                    else:
-                        result = False
-            if result:
+                    resident = User.objects.create(name=name)
+                    Book.objects.create(room_id=room_id, resident=resident, start=start, end=end)
+                    return Response({"message": "xona muvaffaqiyatli band qilindi"}, status=status.HTTP_201_CREATED)
+
+            else:  # first time
                 resident = User.objects.create(name=name)
                 Book.objects.create(room_id=room_id, resident=resident, start=start, end=end)
                 return Response({"message": "xona muvaffaqiyatli band qilindi"}, status=status.HTTP_201_CREATED)
+            return Response({
+                "error": f"Uzr, siz tanlagan vaqtda xona band.",
+                "message": f"Eslatib o'tamizki xona {db_act} - {db_inact} ochiq bo'ladi."
+            }, status=status.HTTP_410_GONE)
 
-        else:
-            resident = User.objects.create(name=name)
-            Book.objects.create(room_id=room_id, resident=resident, start=start, end=end)
-            return Response({"message": "xona muvaffaqiyatli band qilindi"}, status=status.HTTP_201_CREATED)
-        return Response({"error": f"uzr, siz tanlagan vaqtda xona band"},
-                        status=status.HTTP_410_GONE)
+        except Exception as e:
+            return Response({"error": f"{e}"})
