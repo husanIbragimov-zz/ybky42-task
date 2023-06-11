@@ -2,7 +2,7 @@
 
 ---
 
-![Screenshot from 2023-06-11 00-38-06.png](..%2F..%2FPictures%2FScreenshot%20from%202023-06-11%2000-38-06.png)
+![Screenshot](static/Screenshot%20from%202023-06-11%2000-38-06.png)
 
 
 ## How to Use
