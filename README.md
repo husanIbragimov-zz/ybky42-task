@@ -1,10 +1,3 @@
-## Swagger UI
-
----
-
-![Screenshot](static/Screenshot%20from%202023-06-11%2000-38-06.png)
-
-
 ## How to Use
 
 ---
@@ -56,6 +49,13 @@
     
     # Welcome :)
 ```
+
+## Swagger UI
+
+---
+
+![Screenshot](static/Screenshot%20from%202023-06-11%2000-38-06.png)
+
 
 ## Read the documentation
 
