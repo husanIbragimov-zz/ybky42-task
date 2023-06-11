@@ -1,3 +1,10 @@
+## Swagger UI
+
+---
+
+![Screenshot from 2023-06-11 00-38-06.png](..%2F..%2FPictures%2FScreenshot%20from%202023-06-11%2000-38-06.png)
+
+
 ## How to Use
 
 ---
@@ -14,8 +21,8 @@
     $ mkdir media
     
     # Create a virtual environment
-    # Linux & Mac                         # Windows 
-    $ virtualenv venv                     $ py -m venv venv  
+    # Linux & Mac                          # Windows 
+    $ virtualenv venv                      $ py -m venv venv  
     
     
     # Active your virtual environment 
@@ -49,4 +56,14 @@
     
     # Welcome :)
 ```
+
+## Read the documentation
+
+---
+
+__If you want to use the APIs, firstly, you should read the [Postman documentation](https://documenter.getpostman.com/view/21553790/2s93sXdFP4#049bf4c6-1894-450d-bfde-a42f582b3b4b)__
+
+
+
+
 
