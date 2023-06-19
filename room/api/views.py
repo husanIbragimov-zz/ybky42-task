@@ -18,12 +18,13 @@ class LargeResultsSetPagination(PageNumberPagination):
     max_page_size = 100
 
 
-class RoomListView(generics.ListCreateAPIView):
+class RoomListCreateView(generics.ListCreateAPIView):
     queryset = Room.objects.all()
     serializer_class = RoomSerializer
-    pagination_class = LargeResultsSetPagination
+    search_fields = ['name', 'type']
     filterset_class = RoomFilter
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    pagination_class = LargeResultsSetPagination
 
 
 @api_view(['GET'])
@@ -107,6 +108,16 @@ class RoomBookingAPIView(generics.CreateAPIView):
             db_act = obj_room.active_date
             db_inact = obj_room.inactive_date
 
+            if (db_act <= c.time() and db_act < d.time()) and (db_inact > c.time() and db_inact >= d.time()):
+                if datetime.now(tz=timezone.utc) <= c and datetime.now(tz=timezone.utc) <= d:
+                    pass
+                else:
+                    return Response({"error": "Siz hozirgi vaqtdan oldingi vaqtni belgiladingiz!"},
+                                    status=status.HTTP_400_BAD_REQUEST)
+            else:
+                return Response({"error": "Xona vaqtiga to'g'ri kelmayabdi", "open": db_act, "close": db_inact},
+                                status=status.HTTP_400_BAD_REQUEST)
+
             if self.get_queryset().filter(room_id=room_id).count() > 0:  # more than once
                 result = True
                 for query in self.get_queryset().filter(room_id=room_id):
@@ -118,7 +129,7 @@ class RoomBookingAPIView(generics.CreateAPIView):
                             result = True
                         else:
                             result = False
-                            conflict_time2 = b - c
+                            conflict_time = b - c
 
                 if result:
                     resident = User.objects.create(name=name)
