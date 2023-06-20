@@ -90,6 +90,33 @@ class RoomAvailabilityRetrieveView(generics.ListAPIView):
         return availability_list
 
 
+class RoomNotAvailableListView(generics.ListAPIView):
+    serializer_class = RoomAvailabilitySerializer
+
+    def get_queryset(self):
+        room_id = self.kwargs['pk']
+        curr_time = self.request.GET.get('date', datetime.now(timezone.utc))
+
+        if isinstance(curr_time, str):
+            curr_time = datetime.strptime(curr_time, '%Y-%m-%d')
+
+        queryset = Book.objects.filter(
+            Q(room_id=room_id),
+            Q(Q(start__day=curr_time.day) | Q(end__day=curr_time.day))
+        ).order_by('start')
+
+        date_list = []
+        for date in queryset:
+            a = date.start
+            b = date.end
+            date_list.append({
+                "start": f"{a.date()} {a.time()}",
+                "end": f"{b.date()} {b.time()}"
+            })
+
+        return date_list
+
+
 class RoomBookingAPIView(generics.CreateAPIView):
     queryset = Book.objects.all()
     serializer_class = RoomBookingSerializer

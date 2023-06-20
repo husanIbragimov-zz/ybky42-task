@@ -27,7 +27,7 @@ SECRET_KEY = 'django-insecure-7gom_*fd4$(80*0mm^fke9^9!ry3zm5c8y4xpbl(7g9=(f($e4
 DEBUG = False
 # STAGE = 'dev'
 
-ALLOWED_HOSTS = ["luckydeveloper.uz", "www.luckydeveloper.uz"]
+ALLOWED_HOSTS = ["*"]
 
 
 # Application definition
@@ -97,12 +97,12 @@ WSGI_APPLICATION = 'impact.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-#DATABASES = {
+# DATABASES = {
 #    'default': {
 #        'ENGINE': 'django.db.backends.sqlite3',
 #        'NAME': BASE_DIR / 'db.sqlite3',
 #    }
-#}
+# }
 
 
 # ==================================================== PostgresSQL =====================================================
