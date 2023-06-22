@@ -24,7 +24,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-7gom_*fd4$(80*0mm^fke9^9!ry3zm5c8y4xpbl(7g9=(f($e4'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 # STAGE = 'dev'
 
 ALLOWED_HOSTS = ["*"]
@@ -97,25 +97,25 @@ WSGI_APPLICATION = 'impact.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-DATABASES = {
-   'default': {
-       'ENGINE': 'django.db.backends.sqlite3',
-       'NAME': BASE_DIR / 'db.sqlite3',
-   }
-}
+# DATABASES = {
+#    'default': {
+#        'ENGINE': 'django.db.backends.sqlite3',
+#        'NAME': BASE_DIR / 'db.sqlite3',
+#    }
+# }
 
 
 # ==================================================== PostgresSQL =====================================================
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': "impact",
-#         'USER': "impact",
-#         'PASSWORD': "impact",
-#         'HOST': 'localhost',
-#         'PORT': 5432,
-#     }
-# }
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': "impact",
+        'USER': "impact",
+        'PASSWORD': "impact",
+        'HOST': 'localhost',
+        'PORT': 5432,
+    }
+}
 
 
 # Password validation

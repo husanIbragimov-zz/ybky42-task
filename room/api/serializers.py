@@ -20,6 +20,14 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ('name',)
 
 
+class RoomNotAvailabilitySerializer(serializers.ModelSerializer):
+    resident = UserSerializer(read_only=True)
+
+    class Meta:
+        model = Book
+        fields = ('resident', 'start', 'end')
+
+
 class RoomBookingSerializer(serializers.ModelSerializer):
     resident = UserSerializer(write_only=True)
 
