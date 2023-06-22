@@ -9,7 +9,8 @@ from django.shortcuts import get_object_or_404
 from rest_framework import generics, status, filters
 from rest_framework.pagination import PageNumberPagination
 from django_filters.rest_framework import DjangoFilterBackend
-from .serializers import RoomSerializer, RoomBookingSerializer, RoomAvailabilitySerializer
+from .serializers import RoomSerializer, RoomBookingSerializer, RoomAvailabilitySerializer, \
+    RoomNotAvailabilitySerializer
 
 
 class LargeResultsSetPagination(PageNumberPagination):
@@ -91,7 +92,7 @@ class RoomAvailabilityRetrieveView(generics.ListAPIView):
 
 
 class RoomNotAvailableListView(generics.ListAPIView):
-    serializer_class = RoomAvailabilitySerializer
+    serializer_class = RoomNotAvailabilitySerializer
 
     def get_queryset(self):
         room_id = self.kwargs['pk']
@@ -110,6 +111,7 @@ class RoomNotAvailableListView(generics.ListAPIView):
             a = date.start
             b = date.end
             date_list.append({
+                "resident": date.resident,
                 "start": f"{a.date()} {a.time()}",
                 "end": f"{b.date()} {b.time()}"
             })
