@@ -51,8 +51,8 @@ class RoomAvailabilityRetrieveView(generics.ListAPIView):
         ).order_by('start')
 
         room = Room.objects.get(id=room_id)
-        start = room.active_date
-        end = room.inactive_date
+        start = room.open
+        end = room.close
 
         booked_list = []
 
@@ -67,7 +67,7 @@ class RoomAvailabilityRetrieveView(generics.ListAPIView):
             booked_list.append((start, end))
 
         availability_list = []
-        previous_end = room.active_date
+        previous_end = room.open
 
         for start, end in booked_list:
 
@@ -79,10 +79,10 @@ class RoomAvailabilityRetrieveView(generics.ListAPIView):
 
             previous_end = end
 
-        if previous_end < room.inactive_date:
+        if previous_end < room.close:
             availability_list.append({
                 "start": f"{curr_time} {previous_end}",
-                "end": f"{curr_time} {room.inactive_date}"
+                "end": f"{curr_time} {room.close}"
             })
 
         return availability_list
@@ -128,18 +128,18 @@ class RoomBookingAPIView(generics.CreateAPIView):
             d = datetime.strptime(end, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=timezone.utc)
 
             obj_room = Room.objects.get(id=room_id)
-            db_act = obj_room.active_date
-            db_inact = obj_room.inactive_date
+            open = obj_room.open
+            close = obj_room.close
             local_time = (timezone.now() + timezone.timedelta(hours=5))
 
-            if (db_act <= c.time() and db_act < d.time()) and (db_inact > c.time() and db_inact >= d.time()):
+            if (open <= c.time() and open < d.time()) and (close > c.time() and close >= d.time()):
                 if local_time <= c and local_time <= d:
                     pass
                 else:
                     return Response({"error": "Siz hozirgi vaqtdan oldingi vaqtni belgiladingiz!"},
                                     status=status.HTTP_400_BAD_REQUEST)
             else:
-                return Response({"error": "Xona vaqtiga to'g'ri kelmayabdi", "open": db_act, "close": db_inact},
+                return Response({"error": "Xona vaqtiga to'g'ri kelmayabdi", "open": open, "close": close},
                                 status=status.HTTP_400_BAD_REQUEST)
 
             if self.get_queryset().filter(room_id=room_id).count() > 0:  # more than once
@@ -166,7 +166,7 @@ class RoomBookingAPIView(generics.CreateAPIView):
                 return Response({"message": "xona muvaffaqiyatli band qilindi"}, status=status.HTTP_201_CREATED)
             return Response({
                 "error": f"Uzr, siz tanlagan vaqtda xona band.",
-                "message": f"Eslatib o'tamizki xona {db_act} - {db_inact} ochiq bo'ladi."
+                "message": f"Eslatib o'tamizki xona {open} - {close} ochiq bo'ladi."
             }, status=status.HTTP_410_GONE)
 
         except Exception as e:
