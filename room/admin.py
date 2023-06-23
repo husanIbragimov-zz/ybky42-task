@@ -10,6 +10,7 @@ class RoomAdmin(admin.ModelAdmin):
 
 class BookAdmin(admin.ModelAdmin):
     date_hierarchy = 'start'
+    list_display = ('id', 'resident', 'start', 'end')
     readonly_fields = ('date_created',)
 
 
