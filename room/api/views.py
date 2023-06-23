@@ -133,11 +133,11 @@ class RoomBookingAPIView(generics.CreateAPIView):
             local_time = (timezone.now() + timezone.timedelta(hours=5))
 
             if (open <= c.time() and open < d.time()) and (close > c.time() and close >= d.time()):
-                if local_time <= c and local_time <= d:
+                if (local_time <= c and local_time <= d) and (c.day == d.day):
                     pass
                 else:
                     return Response({"error": "Siz hozirgi vaqtdan oldingi vaqtni belgiladingiz!"},
-                                    status=status.HTTP_400_BAD_REQUEST)
+                                    status=status.HTTP_409_CONFLICT)
             else:
                 return Response({"error": "Xona vaqtiga to'g'ri kelmayabdi", "open": open, "close": close},
                                 status=status.HTTP_400_BAD_REQUEST)
