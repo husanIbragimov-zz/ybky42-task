@@ -43,10 +43,7 @@ class RoomAvailabilityRetrieveView(generics.ListAPIView):
 
     def get_queryset(self):
         room_id = self.kwargs['pk']
-        curr_time = self.request.GET.get('date', datetime.now(timezone.utc))
-
-        if isinstance(curr_time, str):
-            curr_time = datetime.strptime(curr_time, '%Y-%m-%d')
+        curr_time = self.request.GET.get('date', datetime.now().date())
 
         queryset = Book.objects.filter(
             Q(room_id=room_id),
@@ -54,18 +51,18 @@ class RoomAvailabilityRetrieveView(generics.ListAPIView):
         ).order_by('start')
 
         room = Room.objects.get(id=room_id)
+        start = room.active_date
+        end = room.inactive_date
+
         booked_list = []
 
         for booked in queryset:
 
-            start = room.active_date
-            end = room.inactive_date
+            if booked.start.date() == curr_time:
+                start = booked.start.time()
 
-            if booked.start.date() == curr_time.date():
-                start = booked.start
-
-            if booked.start.date() == curr_time.date():
-                end = booked.end
+            if booked.start.date() == curr_time:
+                end = booked.end.time()
 
             booked_list.append((start, end))
 
@@ -74,18 +71,18 @@ class RoomAvailabilityRetrieveView(generics.ListAPIView):
 
         for start, end in booked_list:
 
-            if previous_end < start.time():
+            if previous_end < start:
                 availability_list.append({
-                    "start": f"{curr_time.date()} {previous_end}",
-                    "end": f"{curr_time.date()} {start.time()}"
+                    "start": f"{curr_time} {previous_end}",
+                    "end": f"{curr_time} {start}"
                 })
 
-            previous_end = end.time()
+            previous_end = end
 
         if previous_end < room.inactive_date:
             availability_list.append({
-                "start": f"{curr_time.date()} {previous_end}",
-                "end": f"{curr_time.date()} {room.inactive_date}"
+                "start": f"{curr_time} {previous_end}",
+                "end": f"{curr_time} {room.inactive_date}"
             })
 
         return availability_list
@@ -96,10 +93,7 @@ class RoomNotAvailableListView(generics.ListAPIView):
 
     def get_queryset(self):
         room_id = self.kwargs['pk']
-        curr_time = self.request.GET.get('date', datetime.now(timezone.utc))
-
-        if isinstance(curr_time, str):
-            curr_time = datetime.strptime(curr_time, '%Y-%m-%d')
+        curr_time = self.request.GET.get('date', datetime.now().date())
 
         queryset = Book.objects.filter(
             Q(room_id=room_id),
@@ -136,9 +130,10 @@ class RoomBookingAPIView(generics.CreateAPIView):
             obj_room = Room.objects.get(id=room_id)
             db_act = obj_room.active_date
             db_inact = obj_room.inactive_date
+            local_time = (timezone.now() + timezone.timedelta(hours=5))
 
             if (db_act <= c.time() and db_act < d.time()) and (db_inact > c.time() and db_inact >= d.time()):
-                if datetime.now(tz=timezone.utc) <= c and datetime.now(tz=timezone.utc) <= d:
+                if local_time <= c and local_time <= d:
                     pass
                 else:
                     return Response({"error": "Siz hozirgi vaqtdan oldingi vaqtni belgiladingiz!"},
