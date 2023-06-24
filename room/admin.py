@@ -2,7 +2,17 @@ from django.contrib import admin
 from .models import Room, User, Book
 
 
-admin.site.register(Room)
-admin.site.register(User)
-admin.site.register(Book)
+@admin.register(Room)
+class RoomAdmin(admin.ModelAdmin):
+    list_display = ('id', 'name', 'type')
+    readonly_fields = ('date_created',)
 
+
+class BookAdmin(admin.ModelAdmin):
+    date_hierarchy = 'start'
+    list_display = ('id', 'resident', 'start', 'end')
+    readonly_fields = ('date_created',)
+
+
+admin.site.register(User)
+admin.site.register(Book, BookAdmin)

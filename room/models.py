@@ -14,15 +14,17 @@ class Room(models.Model):
     type = models.CharField(choices=TYPE, max_length=223, default='none')
     capacity = models.IntegerField(default=0)
     is_active = models.BooleanField(default=True)
+    open = models.TimeField(null=True, blank=True)
+    close = models.TimeField(null=True, blank=True)
     date_created = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.name
+        return f"{self.id}"
 
 
 class User(models.Model):
     name = models.CharField(max_length=223, null=True)
-    date_created = models.DateTimeField(auto_now_add=True)
+    date_created = models.DateTimeField(auto_now_add=True, null=True)
 
     def __str__(self):
         return self.name
@@ -31,9 +33,10 @@ class User(models.Model):
 class Book(models.Model):
     resident = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     room = models.ForeignKey(Room, on_delete=models.SET_NULL, null=True, related_name='times')
-    start = models.CharField(max_length=223, null=True, blank=True)
-    end = models.CharField(max_length=223, null=True, blank=True)
+    start = models.DateTimeField(null=True, blank=True)
+    end = models.DateTimeField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
+    date_created = models.DateTimeField(auto_now_add=True, null=True)
 
     def __str__(self):
-        return f'The {self.room} room was booked {self.start} - {self.end}'
+        return f'The {self.room} room was booked {self.start.strftime("%Y-%m-%d %H:%M:%S")} - {self.end.strftime("%Y-%m-%d %H:%M:%S")}'

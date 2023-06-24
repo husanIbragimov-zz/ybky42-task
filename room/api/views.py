@@ -1,13 +1,16 @@
 from datetime import datetime
+from django.db.models import Q
+from .filters import RoomFilter
+from django.utils import timezone
+from room.models import Room, User, Book
+from rest_framework.response import Response
+from rest_framework.decorators import api_view
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, status, filters
-from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework.decorators import api_view
 from rest_framework.pagination import PageNumberPagination
-from rest_framework.response import Response
-from room.models import Room, User, Book
-from .filters import RoomFilter
-from .serializers import RoomSerializer, RoomBookingSerializer, BookSerializer
+from django_filters.rest_framework import DjangoFilterBackend
+from .serializers import RoomSerializer, RoomBookingSerializer, RoomAvailabilitySerializer, \
+    RoomNotAvailabilitySerializer
 
 
 class LargeResultsSetPagination(PageNumberPagination):
@@ -16,12 +19,13 @@ class LargeResultsSetPagination(PageNumberPagination):
     max_page_size = 100
 
 
-class RoomListView(generics.ListAPIView):
+class RoomListCreateView(generics.ListCreateAPIView):
     queryset = Room.objects.all()
     serializer_class = RoomSerializer
-    pagination_class = LargeResultsSetPagination
+    search_fields = ['name', 'type']
     filterset_class = RoomFilter
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    pagination_class = LargeResultsSetPagination
 
 
 @api_view(['GET'])
@@ -34,14 +38,79 @@ def room_detail(request, pk):
         return Response({"error": "topilmadi"}, status=status.HTTP_404_NOT_FOUND)
 
 
-@api_view(['GET'])
-def availability(request, pk):
-    try:
-        times = Book.objects.filter(room_id=pk)
-        serializer = BookSerializer(times, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-    except Exception as e:
-        return Response({"error": f"{e}"}, status=status.HTTP_400_BAD_REQUEST)
+class RoomAvailabilityRetrieveView(generics.ListAPIView):
+    serializer_class = RoomAvailabilitySerializer
+
+    def get_queryset(self):
+        room_id = self.kwargs['pk']
+        curr_time = self.request.GET.get('date', datetime.now().date())
+
+        queryset = Book.objects.filter(
+            Q(room_id=room_id),
+            Q(Q(start__day=curr_time.day) | Q(end__day=curr_time.day))
+        ).order_by('start')
+
+        room = Room.objects.get(id=room_id)
+        start = room.open
+        end = room.close
+
+        booked_list = []
+
+        for booked in queryset:
+
+            if booked.start.date() == curr_time:
+                start = booked.start.time()
+
+            if booked.start.date() == curr_time:
+                end = booked.end.time()
+
+            booked_list.append((start, end))
+
+        availability_list = []
+        previous_end = room.open
+
+        for start, end in booked_list:
+
+            if previous_end < start:
+                availability_list.append({
+                    "start": f"{curr_time} {previous_end}",
+                    "end": f"{curr_time} {start}"
+                })
+
+            previous_end = end
+
+        if previous_end < room.close:
+            availability_list.append({
+                "start": f"{curr_time} {previous_end}",
+                "end": f"{curr_time} {room.close}"
+            })
+
+        return availability_list
+
+
+class RoomNotAvailableListView(generics.ListAPIView):
+    serializer_class = RoomNotAvailabilitySerializer
+
+    def get_queryset(self):
+        room_id = self.kwargs['pk']
+        curr_time = self.request.GET.get('date', datetime.now().date())
+
+        queryset = Book.objects.filter(
+            Q(room_id=room_id),
+            Q(Q(start__day=curr_time.day) | Q(end__day=curr_time.day))
+        ).order_by('start')
+
+        date_list = []
+        for date in queryset:
+            a = date.start
+            b = date.end
+            date_list.append({
+                "resident": date.resident,
+                "start": f"{a.date()} {a.time()}",
+                "end": f"{b.date()} {b.time()}"
+            })
+
+        return date_list
 
 
 class RoomBookingAPIView(generics.CreateAPIView):
@@ -49,29 +118,56 @@ class RoomBookingAPIView(generics.CreateAPIView):
     serializer_class = RoomBookingSerializer
 
     def create(self, request, *args, **kwargs):
-        room_id = self.kwargs['pk']
-        name = request.data.get('resident')['name']
-        start = request.data.get('start')
-        end = request.data.get('end')
-        c = datetime.strptime(start, '%Y-%m-%d %H:%M:%S')
-        d = datetime.strptime(end, '%Y-%m-%d %H:%M:%S')
-        print(self.get_queryset().filter(room_id=room_id).count())
+        try:
+            room_id = self.kwargs['pk']
+            name = request.data.get('resident')['name']  # user's name
+            start = request.data.get('start')  # time comes in str format
+            end = request.data.get('end')  # time comes in str format
+            c = datetime.strptime(start, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=timezone.utc)
+            # -> 2023-06-10 12:00:00+00:00  str is formatted to time
+            d = datetime.strptime(end, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=timezone.utc)
 
-        if self.get_queryset().filter(room_id=room_id).count() > 0:
+            obj_room = Room.objects.get(id=room_id)
+            open = obj_room.open
+            close = obj_room.close
+            local_time = (timezone.now() + timezone.timedelta(hours=5))
 
-            for query in self.get_queryset().filter(room_id=room_id):
+            if (open <= c.time() and open < d.time()) and (close > c.time() and close >= d.time()):
+                if (local_time <= c and local_time <= d) and (c.day == d.day):
+                    pass
+                else:
+                    return Response({"error": "Siz hozirgi vaqtdan oldingi vaqtni belgiladingiz!"},
+                                    status=status.HTTP_409_CONFLICT)
+            else:
+                return Response({"error": "Xona vaqtiga to'g'ri kelmayabdi", "open": open, "close": close},
+                                status=status.HTTP_400_BAD_REQUEST)
 
-                db_start = query.start
-                db_end = query.end
-                a = datetime.strptime(db_start, '%Y-%m-%d %H:%M:%S')
-                b = datetime.strptime(db_end, '%Y-%m-%d %H:%M:%S')
+            if self.get_queryset().filter(room_id=room_id).count() > 0:  # more than once
+                result = True
+                for query in self.get_queryset().filter(room_id=room_id):
+                    if result:
+                        a = query.start  # -> 2023-06-10 12:00:00+00:00
+                        b = query.end  # .strftime("%Y-%m-%d %H:%M")
 
-                if (c < a and d <= a) or (b <= c and b < d):
+                        if (c < a and d <= a) or (b <= c and b < d):
+                            result = True
+                        else:
+                            result = False
+                            conflict_time = b - c
+
+                if result:
                     resident = User.objects.create(name=name)
                     Book.objects.create(room_id=room_id, resident=resident, start=start, end=end)
                     return Response({"message": "xona muvaffaqiyatli band qilindi"}, status=status.HTTP_201_CREATED)
-        else:
-            resident = User.objects.create(name=name)
-            Book.objects.create(room_id=room_id, resident=resident, start=start, end=end)
-            return Response({"message": "xona muvaffaqiyatli band qilindi"}, status=status.HTTP_201_CREATED)
-        return Response({"error": "uzr, siz tanlagan vaqtda xona band"}, status=status.HTTP_410_GONE)
+
+            else:  # first time
+                resident = User.objects.create(name=name)
+                Book.objects.create(room_id=room_id, resident=resident, start=start, end=end)
+                return Response({"message": "xona muvaffaqiyatli band qilindi"}, status=status.HTTP_201_CREATED)
+            return Response({
+                "error": f"Uzr, siz tanlagan vaqtda xona band.",
+                "message": f"Eslatib o'tamizki xona {open} - {close} ochiq bo'ladi."
+            }, status=status.HTTP_410_GONE)
+
+        except Exception as e:
+            return Response({"error": f"{e}"}, status=status.HTTP_400_BAD_REQUEST)
