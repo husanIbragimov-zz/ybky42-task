@@ -1,8 +1,8 @@
 from datetime import datetime
 from django.db.models import Q
 from .filters import RoomFilter
-from django.utils import timezone
 from room.models import Room, User, Book
+from typing_extensions import OrderedDict
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from django.shortcuts import get_object_or_404
@@ -14,9 +14,19 @@ from .serializers import RoomSerializer, RoomBookingSerializer, RoomAvailability
 
 
 class LargeResultsSetPagination(PageNumberPagination):
-    page_size = 3
+    page_size = 10
     page_size_query_param = 'page_size'
     max_page_size = 100
+
+    def get_paginated_response(self, data):
+        return Response(OrderedDict([
+            ('count', self.page.paginator.count),
+            ('page', self.page.number),
+            ('page_size', self.page_size),
+            ('next', self.get_next_link()),
+            ('previous', self.get_previous_link()),
+            ('results', data)
+        ]))
 
 
 class RoomListCreateView(generics.ListCreateAPIView):
@@ -43,11 +53,14 @@ class RoomAvailabilityRetrieveView(generics.ListAPIView):
 
     def get_queryset(self):
         room_id = self.kwargs['pk']
-        curr_time = self.request.GET.get('date', datetime.now().date())
+        curr_time = self.request.GET.get('date', datetime.now().strftime("%d-%m-%Y"))
+        obj_date = datetime.strptime(curr_time, '%d-%m-%Y')
+        cur = obj_date.strftime("%Y-%m-%d")
+        cur_date = datetime.strptime(cur, "%Y-%m-%d")
 
         queryset = Book.objects.filter(
             Q(room_id=room_id),
-            Q(Q(start__day=curr_time.day) | Q(end__day=curr_time.day))
+            Q(Q(start__day=cur_date.day) | Q(end__day=cur_date.day))
         ).order_by('start')
 
         room = Room.objects.get(id=room_id)
@@ -57,11 +70,10 @@ class RoomAvailabilityRetrieveView(generics.ListAPIView):
         booked_list = []
 
         for booked in queryset:
-
-            if booked.start.date() == curr_time:
+            if booked.start.date() == cur_date.date():
                 start = booked.start.time()
 
-            if booked.start.date() == curr_time:
+            if booked.end.date() == cur_date.date():
                 end = booked.end.time()
 
             booked_list.append((start, end))
@@ -118,56 +130,44 @@ class RoomBookingAPIView(generics.CreateAPIView):
     serializer_class = RoomBookingSerializer
 
     def create(self, request, *args, **kwargs):
+        room_id = self.kwargs['pk']
+        name = request.data.get('resident')['name']  # user's name
+        start = request.data.get('start')  # time comes in str format
+        end = request.data.get('end')  # time comes in str format
         try:
-            room_id = self.kwargs['pk']
-            name = request.data.get('resident')['name']  # user's name
-            start = request.data.get('start')  # time comes in str format
-            end = request.data.get('end')  # time comes in str format
-            c = datetime.strptime(start, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=timezone.utc)
-            # -> 2023-06-10 12:00:00+00:00  str is formatted to time
-            d = datetime.strptime(end, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=timezone.utc)
-
-            obj_room = Room.objects.get(id=room_id)
-            open = obj_room.open
-            close = obj_room.close
-            local_time = (timezone.now() + timezone.timedelta(hours=5))
-
-            if (open <= c.time() and open < d.time()) and (close > c.time() and close >= d.time()):
-                if (local_time <= c and local_time <= d) and (c.day == d.day):
-                    pass
-                else:
-                    return Response({"error": "Siz hozirgi vaqtdan oldingi vaqtni belgiladingiz!"},
-                                    status=status.HTTP_409_CONFLICT)
-            else:
-                return Response({"error": "Xona vaqtiga to'g'ri kelmayabdi", "open": open, "close": close},
-                                status=status.HTTP_400_BAD_REQUEST)
+            c = parse_time(start)
+            d = parse_time(end)
 
             if self.get_queryset().filter(room_id=room_id).count() > 0:  # more than once
                 result = True
                 for query in self.get_queryset().filter(room_id=room_id):
                     if result:
-                        a = query.start  # -> 2023-06-10 12:00:00+00:00
-                        b = query.end  # .strftime("%Y-%m-%d %H:%M")
+                        a = query.start.strftime("%Y-%m-%d %H:%M:%S")  # -> 2023-06-10 12:00:00+00:00
+                        b = query.end.strftime("%Y-%m-%d %H:%M:%S")
 
                         if (c < a and d <= a) or (b <= c and b < d):
                             result = True
                         else:
                             result = False
-                            conflict_time = b - c
 
                 if result:
                     resident = User.objects.create(name=name)
-                    Book.objects.create(room_id=room_id, resident=resident, start=start, end=end)
+                    Book.objects.create(room_id=room_id, resident=resident, start=c, end=d)
                     return Response({"message": "xona muvaffaqiyatli band qilindi"}, status=status.HTTP_201_CREATED)
 
             else:  # first time
                 resident = User.objects.create(name=name)
-                Book.objects.create(room_id=room_id, resident=resident, start=start, end=end)
+                Book.objects.create(room_id=room_id, resident=resident, start=c, end=d)
                 return Response({"message": "xona muvaffaqiyatli band qilindi"}, status=status.HTTP_201_CREATED)
             return Response({
-                "error": f"Uzr, siz tanlagan vaqtda xona band.",
-                "message": f"Eslatib o'tamizki xona {open} - {close} ochiq bo'ladi."
+                "error": f"uzr, siz tanlagan vaqtda xona band"
             }, status=status.HTTP_410_GONE)
 
         except Exception as e:
             return Response({"error": f"{e}"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+def parse_time(time):
+    obj_date = datetime.strptime(time, '%d-%m-%Y %H:%M:%S')
+    cur = obj_date.strftime("%Y-%m-%d %H:%M:%S")
+    return cur
